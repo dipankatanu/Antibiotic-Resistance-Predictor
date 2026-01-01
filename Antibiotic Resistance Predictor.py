@@ -157,6 +157,98 @@ for gene in top_genes:
     except: 
         continue
 
+# ### Statistical Validation & Model Robustness
+
+# In[12]:
+
+
+from sklearn.model_selection import permutation_test_score, GridSearchCV, cross_val_score
+import numpy as np
+
+# --- 1. Permutation Testing ---
+# This proves the model accuracy is statistically significant
+print("Starting Permutation Test (This will take time)...")
+score, permutation_scores, pvalue = permutation_test_score(
+    best_model, X, y, scoring="accuracy", cv=5, n_permutations=100, n_jobs=-1
+)
+print(f"True Accuracy: {score:.4f}")
+print(f"P-value: {pvalue:.4f}")
+
+# --- 2. Nested Cross-Validation ---
+# This ensures the accuracy is not biased by the parameter tuning
+print("\nStarting Nested Cross-Validation...")
+inner_cv = KFold(n_splits=3, shuffle=True, random_state=42)
+outer_cv = KFold(n_splits=5, shuffle=True, random_state=42)
+
+# Inner loop: GridSearchCV
+clf = GridSearchCV(estimator=RandomForestClassifier(), param_grid=param_grid, cv=inner_cv)
+
+# Outer loop: Generalization error
+nested_score = cross_val_score(clf, X, y, cv=outer_cv)
+print(f"Nested CV Mean Accuracy: {nested_score.mean():.4f}")
+
+# --- 3. Population Structure (Simplified Proxy) ---
+# A true LMM often requires 'pyseer' or 'limix', but we can check for
+# lineage bias by testing accuracy on the 'MLST' column if available.
+if 'MLST' in metadata.columns:
+    print("\nChecking Lineage Bias via MLST Groups...")
+    # (Implementation involves GroupKFold using MLST as the groups)
+
+
+# # Lineage-Independent Model Validation
+
+# In[16]:
+
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import GroupKFold, cross_val_score
+
+# 1. Re-merge specifically to include MLST for this analysis
+# We need 'Isolate' to match, and 'MLST' + 'target' for the visualization
+plot_df = pd.merge(
+    gene_data, 
+    metadata[['Isolate', 'MLST', 'CIP']], 
+    left_on='Unnamed: 0', 
+    right_on='Isolate'
+)
+plot_df['target'] = plot_df['CIP'].map({'R': 1, 'S': 0})
+plot_df = plot_df.dropna(subset=['target', 'MLST'])
+
+# 2. Visualize the distribution of Resistance across the Top 10 MLSTs
+top_mlsts = plot_df['MLST'].value_counts().head(10).index
+mlst_subset = plot_df[plot_df['MLST'].isin(top_mlsts)]
+
+plt.figure(figsize=(12, 6))
+sns.countplot(data=mlst_subset, x='MLST', hue='target', palette='magma')
+
+plt.title("Ciprofloxacin Resistance Distribution by MLST (Lineage)")
+plt.ylabel("Number of Isolates")
+plt.xlabel("MLST (Sequence Type)")
+plt.legend(title='Status', labels=['Susceptible (0)', 'Resistant (1)'])
+plt.xticks(rotation=45)
+plt.savefig("Ciprofloxacin Resistance Distribution by MLST.png")
+plt.show()
+
+# 3. Perform GroupKFold (Lineage-Aware Validation)
+# can the model predict resistance in a sequence type it has never seen before?
+print("Starting GroupKFold (Lineage-Aware Validation)...")
+gkf = GroupKFold(n_splits=5)
+
+# X must match the features used in training (dropping non-gene columns)
+X_gkf = plot_df.drop(columns=['Unnamed: 0', 'Isolate', 'MLST', 'CIP', 'target'])
+y_gkf = plot_df['target']
+groups = plot_df['MLST']
+
+group_scores = cross_val_score(best_model, X_gkf, y_gkf, cv=gkf, groups=groups)
+print(f"Lineage-Independent Accuracy (GroupKFold): {group_scores.mean():.4f}")
+
+
+# In[ ]:
+
+
+
+
 
 # In[ ]:
 
