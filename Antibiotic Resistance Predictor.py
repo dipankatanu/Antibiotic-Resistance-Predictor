@@ -188,8 +188,7 @@ nested_score = cross_val_score(clf, X, y, cv=outer_cv)
 print(f"Nested CV Mean Accuracy: {nested_score.mean():.4f}")
 
 # --- 3. Population Structure (Simplified Proxy) ---
-# A true LMM often requires 'pyseer' or 'limix', but we can check for
-# lineage bias by testing accuracy on the 'MLST' column if available.
+
 if 'MLST' in metadata.columns:
     print("\nChecking Lineage Bias via MLST Groups...")
     # (Implementation involves GroupKFold using MLST as the groups)
