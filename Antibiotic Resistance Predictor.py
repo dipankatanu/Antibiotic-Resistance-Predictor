@@ -36,12 +36,13 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 
-# Global Path Configuration
-data_path = r'C:\Users\Physi\OneDrive - Royal College of Surgeons in Ireland\Desktop\Antibiotic Resistance Predictor\Datasets'
+from pathlib import Path
 
-# Loading Datasets
-metadata = pd.read_csv(f"{data_path}\Metadata.csv")
-gene_data = pd.read_csv(f"{data_path}\AccessoryGene.csv")
+BASE_DIR = Path(__file__).resolve().parent
+data_path = BASE_DIR / "data"  # put Metadata.csv + AccessoryGene.csv into a data/ folder
+
+metadata = pd.read_csv(data_path / "Metadata.csv")
+gene_data = pd.read_csv(data_path / "AccessoryGene.csv")
 
 # Merging Genotype and Phenotype
 merged_df = pd.merge(gene_data, metadata[['Isolate', 'CIP']], left_on='Unnamed: 0', right_on='Isolate')
